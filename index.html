@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ho Ko - Interactive 3D Resume</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ScrollMagic/2.0.8/ScrollMagic.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ScrollMagic/2.0.8/plugins/animation.gsap.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+        :root {
+            --primary-color: #6c5ce7;
+            --secondary-color: #00cec9;
+            --background-color: #0c0c0c;
+            --text-color: #ffffff;
+            --accent-color: #fd79a8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .section {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .content {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transform: translateY(50px);
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        .content.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+		li {
+			margin-left: 20px;
+		}
+
+        .skill-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .skill {
+            background-color: var(--secondary-color);
+            color: var(--background-color);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .skill:hover {
+            transform: scale(1.05);
+            background-color: var(--accent-color);
+        }
+
+        .project, .education-item, .experience-item {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .project:hover, .education-item:hover, .experience-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+        }
+
+        .project h3, .education-item h3, .experience-item h3 {
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .date {
+            font-style: italic;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        #contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #contact-form input,
+        #contact-form textarea {
+            padding: 0.5rem;
+            border-radius: 5px;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+        }
+
+        #contact-form button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #contact-form button:hover {
+            background-color: var(--accent-color);
+        }
+
+        #scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 5px;
+            background-color: var(--accent-color);
+            z-index: 9999;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            h3 {
+                font-size: 1.2rem;
+            }
+        }
+		
+		.hidden-content {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .show-more-btn {
+            background-color: var(--secondary-color);
+            color: var(--background-color);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .show-more-btn:hover {
+            background-color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div id="scroll-progress"></div>
+    <div id="canvas-container"></div>
+
+    <section id="header" class="section">
+        <div class="content">
+            <h1>Ho Ko</h1>
+            <p>A Non-AI working on AI</p>
+        </div>
+    </section>
+
+    <section id="about" class="section">
+        <div class="content">
+            <h2>About Me</h2>
+            <p>I'm a passionate AI engineer and researcher with a deep interest in pushing the boundaries of artificial intelligence. With a strong background in computer science and a keen eye for innovation, I strive to create cutting-edge solutions that bridge the gap between human intelligence and machine learning.</p>
+        </div>
+    </section>
+
+    <section id="experience" class="section">
+        <div class="content">
+            <h2>Work Experience</h2>
+            <div class="experience-item">
+                <h3>Software Engineer Intern - Google</h3>
+                <p class="date">May 2022 - August 2022</p>
+                <ul>
+                    <li>Developed TFlite model tensor extractor and metadata writer.</li>
+                    <li>Established a comprehensive rule and incorporated into an identifier to classify ML model use cases with hierarchy rule applying approach.</li>
+                    <li>Integrated a C++ code generator for automatic production of C++ and Python inference codes for common TFlite models.</li>
+                </ul>
+            </div>
+            <div class="experience-item">
+                <h3>AI Engineer and Researcher - Ubiik</h3>
+                <p class="date">Jan 2020 - May 2020</p>
+                <ul>
+                    <li>Analyzed satellite images to predict cloud movements using machine learning models.</li>
+                    <li>Developed models to estimate solar panel production rates with over 99% accuracy.</li>
+                    <li>Analyzed data contribution ratios within DNN models and backtracked source reliability.</li>
+                </ul>
+            </div>
+            <div class="experience-item">
+                <h3>Research Assistant - Caltech</h3>
+                <p class="date">June 2018 - Aug 2018</p>
+                <ul>
+                    <li>Collected and classified transient astronomical events from Zwicky Transient Facility data.</li>
+                    <li>Studied Type IIb Supernova events using various telescopes.</li>
+                    <li>Estimated mass ejection and energy released in Type IIb Supernovae.</li>
+                </ul>
+            </div>
+            <div class="hidden-content" id="hidden-experience">
+                <div class="experience-item">
+                    <h3>Back-end Developer - Brilltek</h3>
+                    <p class="date">Dec 2019 - June 2020</p>
+                    <ul>
+                        <li>Developed a back-end system to monitor and manage a CNC machining factory in Vietnam.</li>
+                        <li>Designed resource flow and worker's SOP to improve performance and increase labor safety.</li>
+                        <li>Optimized resource distribution and usage priority to keep the factory sustainable without supervisory control.</li>
+                    </ul>
+                </div>
+                <div class="experience-item">
+                    <h3>Intern Engineer - SilverDome Security</h3>
+                    <p class="date">July 2017 - Aug 2018</p>
+                    <ul>
+                        <li>Utilized honeypot to track and record suspicious emails, login attempts, port scanning and connection attempts.</li>
+                        <li>Analyzed data from Elasticsearch database to determine malicious user behavior.</li>
+                        <li>Filtered dangerous hyperlinks in emails using previously collected knowledge.</li>
+                    </ul>
+                </div>
+                <div class="experience-item">
+                    <h3>Teaching Assistant - National Central University</h3>
+                    <p class="date">Sep 2016 - Feb 2017</p>
+                    <ul>
+                        <li>Designed problem sets for C and C++ programming practice.</li>
+                        <li>Determined edge cases to examine common programmers' mistakes.</li>
+                        <li>Assisted 50 students during laboratory sessions.</li>
+                    </ul>
+                </div>
+            </div>
+            <button class="show-more-btn" id="show-more-exp">Show More</button>
+        </div>
+    </section>
+
+    <section id="skills" class="section">
+        <div class="content">
+            <h2>Skills</h2>
+            <div class="skill-container">
+                <span class="skill">Machine Learning</span>
+                <span class="skill">Deep Learning</span>
+                <span class="skill">Computer Vision</span>
+                <span class="skill">Natural Language Processing</span>
+                <span class="skill">Python</span>
+                <span class="skill">TensorFlow</span>
+                <span class="skill">PyTorch</span>
+                <span class="skill">Data Analysis</span>
+                <span class="skill">Big Data</span>
+                <span class="skill">Cloud Computing</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="projects" class="section">
+        <div class="content">
+            <h2>Notable Projects</h2>
+            <div class="project">
+                <h3>Weather and Cloud Distribution Prediction</h3>
+                <p>Developed models for various weather-related predictions, achieving over 99% accuracy in solar power output estimation.</p>
+            </div>
+            <div class="project">
+                <h3>Autonomous Driving Algorithm</h3>
+                <p>Designed a novel evolutionary algorithm for autonomous driving tasks, outperforming traditional genetic algorithms.</p>
+            </div>
+            <div class="project">
+                <h3>Type IIb Supernova Research</h3>
+                <p>Conducted research on a Type IIb Supernova, contributing to a paper published in The Astrophysical Journal Letters.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="section">
+        <div class="content">
+            <h2>Contact Me</h2>
+            <form id="contact-form">
+                <input type="text" placeholder="Name" required>
+                <input type="email" placeholder="Email" required>
+                <textarea placeholder="Message" required></textarea>
+                <button type="submit">Send Message</button>
+            </form>
+        </div>
+    </section>
+
+    <script>
+        // Three.js background animation
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const material = new THREE.MeshBasicMaterial({ color: 0x6c5ce7, wireframe: true });
+        const torusKnot = new THREE.Mesh(geometry, material);
+        scene.add(torusKnot);
+
+        camera.position.z = 30;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            torusKnot.rotation.x += 0.01;
+            torusKnot.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Scroll animations
+        const controller = new ScrollMagic.Controller();
+
+        document.querySelectorAll('.section').forEach((section) => {
+            new ScrollMagic.Scene({
+                triggerElement: section,
+                triggerHook: 0.8,
+                reverse: false
+            })
+            .setClassToggle(section.querySelector('.content'), 'active')
+            .addTo(controller);
+        });
+
+        // Scroll progress bar
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrollPercentage = (scrollTop / scrollHeight) * 100;
+            document.getElementById('scroll-progress').style.width = scrollPercentage + '%';
+        });
+
+        // Form submission (replace with your own logic)
+        document.getElementById('contact-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Message sent successfully!');
+            e.target.reset();
+        });
+		
+		// Toggle hidden content
+        document.getElementById('show-more-exp').addEventListener('click', function() {
+            const hiddenContent = document.getElementById('hidden-experience');
+            const buttonText = this.textContent;
+
+            if (buttonText === 'Show More') {
+                hiddenContent.style.display = 'block';
+                this.textContent = 'Show Less';
+            } else {
+                hiddenContent.style.display = 'none';
+                this.textContent = 'Show More';
+                    };
+		});
+
+        // Responsive canvas
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
